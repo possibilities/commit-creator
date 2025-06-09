@@ -4,11 +4,9 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
-# Global variables for tracking state
 PROJECT_NAME=$(basename "$(pwd)")
 COMMIT_MESSAGE=""
 
-# Trap for unexpected errors
 trap 'error_code=$?; 
       if command -v notify-send &> /dev/null; then 
           notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\nScript failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
@@ -22,7 +20,7 @@ error_exit() {
     if command -v notify-send &> /dev/null; then
         notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\n$message" --urgency=critical
     fi
-    trap - ERR  # Disable the ERR trap to prevent double notification
+    trap - ERR
     exit 1
 }
 
@@ -406,6 +404,7 @@ commit_creator() {
                 local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
                 notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=normal
             fi
+            show_commit_summary
         else
             error_exit "Failed to create commit!"
         fi

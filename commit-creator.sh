@@ -4,12 +4,21 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
+# Trap for unexpected errors
+trap 'error_code=$?; 
+      if command -v notify-send &> /dev/null; then 
+          notify-send "❌ Commit Creator Error" "Script failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
+      fi; 
+      echo "Error: Script failed at line $LINENO (exit code: $error_code)" >&2; 
+      exit $error_code' ERR
+
 error_exit() {
     local message="$1"
     echo "$message" >&2
     if command -v notify-send &> /dev/null; then
         notify-send "❌ Commit Creator Error" "$message" --urgency=critical
     fi
+    trap - ERR  # Disable the ERR trap to prevent double notification
     exit 1
 }
 
@@ -320,24 +329,18 @@ setup_remote_and_push() {
         local repo_name=$(basename "$(pwd)")
         
         if ! command -v gh &> /dev/null; then
-            echo "Error: GitHub CLI (gh) is not installed. Please install it to create a remote repository." >&2
-            echo "Commit was created successfully but not pushed." >&2
-            return 1
+            error_exit "GitHub CLI (gh) is not installed. Please install it to create a remote repository.\nCommit was created successfully but not pushed."
         fi
         
         if ! gh auth status &> /dev/null; then
-            echo "Error: GitHub CLI is not authenticated. Please run 'gh auth login' first." >&2
-            echo "Commit was created successfully but not pushed." >&2
-            return 1
+            error_exit "GitHub CLI is not authenticated. Please run 'gh auth login' first.\nCommit was created successfully but not pushed."
         fi
         
         echo "Creating private GitHub repository: $repo_name" >&2
         if gh repo create "$repo_name" --private --source=. --remote=origin --push; then
             echo "Repository created and pushed successfully!" >&2
         else
-            echo "Error: Failed to create GitHub repository" >&2
-            echo "Commit was created successfully but not pushed." >&2
-            return 1
+            error_exit "Failed to create GitHub repository.\nCommit was created successfully but not pushed."
         fi
     else
         echo "Pushing to origin..." >&2
@@ -345,9 +348,7 @@ setup_remote_and_push() {
         if git push -u origin "$current_branch"; then
             echo "Pushed successfully!" >&2
         else
-            echo "Error: Failed to push to origin" >&2
-            echo "Commit was created successfully but not pushed." >&2
-            return 1
+            error_exit "Failed to push to origin.\nCommit was created successfully but not pushed."
         fi
     fi
 }

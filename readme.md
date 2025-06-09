@@ -1,6 +1,8 @@
 # Commit Creator
 
-An opinionated script using Claude Code to help create commits with expressive messages.
+> An opinionated script using Claude Code to help create commits with expressive messages.
+
+## Recipe
 
 1. Basic security check
 1. Write commit message

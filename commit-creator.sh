@@ -40,10 +40,6 @@ check_required_executables() {
         missing+=("  - tree: tree is required for displaying project structure")
     fi
     
-    if ! command -v context-composer &> /dev/null; then
-        missing+=("  - context-composer: context-composer is required for generating commit context")
-    fi
-    
     if [[ ${#missing[@]} -gt 0 ]]; then
         echo "Error: Required executables are missing:" >&2
         printf '%s\n' "${missing[@]}" >&2
@@ -260,7 +256,7 @@ All changes are in the working tree and all context to create a commit message a
 EOF
 }
 
-run_claude_composer() {
+run_claude() {
     local context="$1"
     local validate_result="${2:-false}"
     local capture_file_content="${3:-false}"
@@ -352,7 +348,7 @@ commit_creator() {
     echo "Running security check..." >&2
     local safety_check_prompt
     safety_check_prompt=$(get_safety_check_prompt)
-    run_claude_composer "$safety_check_prompt" "true"
+    run_claude "$safety_check_prompt" "true"
 
     if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
         echo "Error: Security check failed!" >&2
@@ -375,7 +371,7 @@ commit_creator() {
     local create_commit_prompt
     create_commit_prompt=$(get_create_commit_prompt)
     local commit_message
-    commit_message=$(run_claude_composer "$create_commit_prompt" "true" "true")
+    commit_message=$(run_claude "$create_commit_prompt" "true" "true")
     
     if [[ -z "$commit_message" ]]; then
         echo "Error: No commit message was generated!" >&2

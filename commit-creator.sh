@@ -4,30 +4,22 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
-run_command() {
-    local cmd="$1"
-    local capture_output="${2:-false}"
-    local check="${3:-true}"
-    
-    if [[ "$capture_output" == "true" ]]; then
-        local output
-        output=$(eval "$cmd" 2>&1) || {
-            local exit_code=$?
-            if [[ "$check" == "true" ]]; then
-                return $exit_code
-            fi
-        }
-        echo "$output"
+detect_package_manager() {
+    if [[ -f "package-lock.json" ]]; then
+        echo "npm"
+    elif [[ -f "yarn.lock" ]]; then
+        echo "yarn"
+    elif [[ -f "pnpm-lock.yaml" ]]; then
+        echo "pnpm"
+    elif [[ -f "bun.lockb" ]]; then
+        echo "bun"
+    elif [[ -f "package.json" ]]; then
+        echo "npm"
     else
-        eval "$cmd" || {
-            local exit_code=$?
-            if [[ "$check" == "true" ]]; then
-                return $exit_code
-            fi
-            return $exit_code
-        }
+        echo ""
     fi
 }
+
 
 check_required_executables() {
     local missing=()
@@ -58,8 +50,9 @@ ensure_git_repository() {
 format_code() {
     if [[ -f "./package.json" ]]; then
         if jq -e '.scripts.format' package.json &> /dev/null; then
-            echo "Formatting with pnpm..." >&2
-            if ! pnpm format >&2 2>&1; then
+            local pkg_manager=$(detect_package_manager)
+            echo "Formatting with $pkg_manager..." >&2
+            if ! $pkg_manager run format >&2 2>&1; then
                 echo "Error: Code formatting failed" >&2
                 exit 1
             fi
@@ -95,9 +88,10 @@ stage_all_changes_and_verify() {
 
 run_tests() {
     if [[ -f "./package.json" ]]; then
-        if npx js-yaml package.json 2>/dev/null | jq -e '.scripts.test' &> /dev/null; then
-            echo "Running tests with npm test..." >&2
-            if ! pnpm test; then
+        if jq -e '.scripts.test' package.json &> /dev/null; then
+            local pkg_manager=$(detect_package_manager)
+            echo "Running tests with $pkg_manager test..." >&2
+            if ! $pkg_manager run test; then
                 echo "Error: Tests failed" >&2
                 exit 1
             fi
@@ -126,7 +120,7 @@ get_safety_check_prompt() {
     
     cat << EOF
 <Role>
-You are a senior engineer who is an expert at performing software security check.
+You are a engineer who is an expert at performing software security checks.
 </Role>
 
 <Context>
@@ -199,7 +193,7 @@ get_create_commit_prompt() {
     
     cat << EOF
 <Role>
-You are a senior engineer who is an expert at git and writing commit messages. You are a human making a commit for code written by you, a human.
+You are a engineer who is an expert at git and writing commit messages. You are a human making a commit for code written by you, a human.
 </Role>
 
 <Rules>

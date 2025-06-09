@@ -19,6 +19,8 @@ cleanup() {
     fi
 }
 
+trap cleanup EXIT INT TERM
+
 error() {
     echo -e "${RED}Error: $1${NC}" >&2
     exit 1
@@ -39,11 +41,18 @@ fi
 check_dependencies() {
     local missing=()
     
-    for cmd in git tree context-composer claude-composer commit-composer-mcp; do
+    # Check for required commands used by commit-creator.sh
+    for cmd in git tree jq; do
         if ! command -v "$cmd" &> /dev/null; then
             missing+=("$cmd")
         fi
     done
+    
+    # Check for Claude executable
+    local claude_executable="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
+    if [[ ! -x "$claude_executable" ]]; then
+        missing+=("claude (expected at $claude_executable)")
+    fi
     
     if [[ ${#missing[@]} -gt 0 ]]; then
         error "Missing required dependencies: ${missing[*]}"

@@ -1,6 +1,6 @@
 # Commit Creator
 
-An opinionated script for using Claude Code create commit messages for pending changes in a repo.
+An opinionated script using Claude Code to help create commits with expressive messages.
 
 1. Basic security check
 1. Write commit message

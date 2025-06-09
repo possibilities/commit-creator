@@ -89,7 +89,6 @@ create_initial_commit() {
 create_files_with_credentials() {
     info "Creating files with fake credentials..."
     
-    # Create a config file with API keys
     cat > config.json << 'EOF'
 {
   "api_key": "sk-1234567890abcdef1234567890abcdef",
@@ -99,7 +98,6 @@ create_files_with_credentials() {
 EOF
     success "Created config.json with fake API keys"
     
-    # Create .env file with credentials
     cat > .env << 'EOF'
 DATABASE_HOST=localhost
 DATABASE_USER=admin
@@ -110,7 +108,6 @@ STRIPE_SECRET_KEY=sk_test_4eC39HqLyjWDarjtT1zdp7dc
 EOF
     success "Created .env file with fake credentials"
     
-    # Create a source file with hardcoded tokens
     cat > app.js << 'EOF'
 const express = require('express');
 const app = express();
@@ -127,7 +124,6 @@ app.listen(3000);
 EOF
     success "Created app.js with hardcoded tokens"
     
-    # Create a private key file
     cat > private_key.pem << 'EOF'
 -----BEGIN RSA PRIVATE KEY-----
 MIIEogIBAAKCAQEA6arGDc4l2xH6JYPYhdNiZJvG+hng6tQQC7g5KKnx5T8Li1aW
@@ -146,7 +142,6 @@ test_security_fail() {
     echo
     info "Running commit-creator.sh (expecting it to fail)..."
     
-    # Run commit-creator and expect it to fail
     if "$COMMIT_CREATOR_SCRIPT" 2>&1; then
         error "commit-creator.sh succeeded when it should have failed!"
     else
@@ -154,18 +149,15 @@ test_security_fail() {
         success "commit-creator.sh failed as expected (exit code: $exit_code)"
     fi
     
-    # Check if security check file was created
     if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
         success "FAILED-SECURITY-CHECK.txt was created"
         echo
         info "Security check failure details:"
         cat "./FAILED-SECURITY-CHECK.txt"
     else
-        # The file might have been cleaned up, but that's okay
         info "FAILED-SECURITY-CHECK.txt was not found (may have been cleaned up)"
     fi
     
-    # Verify no new commits were created
     local commit_count=$(git rev-list --count HEAD)
     if [[ $commit_count -eq 1 ]]; then
         success "No new commit was created (as expected)"

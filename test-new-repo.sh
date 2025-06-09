@@ -74,7 +74,6 @@ create_test_repo() {
 }
 
 test_commit_creator() {
-    # Create new files for the first commit
     echo "# Test Project" > README.md
     echo "This is a test project for commit-creator" >> README.md
     echo "Created on: $(date)" >> README.md
@@ -93,7 +92,6 @@ EOF
     echo "console.log('Hello, World!');" > index.js
     success "Created index.js"
     
-    # Verify this is a repo with no commits
     if git rev-list --count HEAD &> /dev/null; then
         error "Repository already has commits, but we're testing first commit creation"
     else

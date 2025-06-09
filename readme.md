@@ -9,4 +9,4 @@ An opinionated script for using Claude Code create commit messages for pending c
 
 ## Test scripts
 
-Warning: these invoke Claude Code and use real tokens
+Warning: These invoke Claude Code and use real tokens and push to real gitub repos. Run at your own discretion.

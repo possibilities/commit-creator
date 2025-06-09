@@ -11,7 +11,7 @@ COMMIT_MESSAGE=""
 # Trap for unexpected errors
 trap 'error_code=$?; 
       if command -v notify-send &> /dev/null; then 
-          notify-send "❌ Commit Creator Error [$PROJECT_NAME]" "Script failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
+          notify-send "❌ Commit Creator Error" "Project: $PROJECT_NAME\nScript failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
       fi; 
       echo "Error: Script failed at line $LINENO (exit code: $error_code)" >&2; 
       exit $error_code' ERR
@@ -20,7 +20,7 @@ error_exit() {
     local message="$1"
     echo "$message" >&2
     if command -v notify-send &> /dev/null; then
-        notify-send "❌ Commit Creator Error [$PROJECT_NAME]" "$message" --urgency=critical
+        notify-send "❌ Commit Creator Error" "Project: $PROJECT_NAME\n$message" --urgency=critical
     fi
     trap - ERR  # Disable the ERR trap to prevent double notification
     exit 1
@@ -328,7 +328,7 @@ show_commit_summary() {
 
 setup_remote_and_push() {
     if ! git remote get-url origin &> /dev/null; then
-        echo "No origin remote found. Creating GitHub repository..." >&2
+        echo "No origin remote found. Creating git repository..." >&2
         
         local repo_name=$(basename "$(pwd)")
         
@@ -340,11 +340,11 @@ setup_remote_and_push() {
             error_exit "GitHub CLI is not authenticated. Please run 'gh auth login' first.\nCommit was created successfully but not pushed."
         fi
         
-        echo "Creating private GitHub repository: $repo_name" >&2
+        echo "Creating private git repository: $repo_name" >&2
         if gh repo create "$repo_name" --private --source=. --remote=origin --push; then
             echo "Repository created and pushed successfully!" >&2
         else
-            error_exit "Failed to create GitHub repository.\nCommit was created successfully but not pushed."
+            error_exit "Failed to create git repository.\nCommit was created successfully but not pushed."
         fi
     else
         echo "Pushing to origin..." >&2
@@ -404,16 +404,16 @@ commit_creator() {
             setup_remote_and_push
             if command -v notify-send &> /dev/null; then
                 local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
-                notify-send "✅ Commit Creator Success [$PROJECT_NAME]" "$first_line" --urgency=normal
+                notify-send "✅ Commit Creator Succeeded" "Project: $PROJECT_NAME\n$first_line" --urgency=normal
             fi
         else
             error_exit "Failed to create commit!"
         fi
     else
-        echo "No changes to commit. Ensuring repository is pushed to GitHub..." >&2
+        echo "No changes to commit. Ensuring repository is pushed to git repo..." >&2
         setup_remote_and_push
         if command -v notify-send &> /dev/null; then
-            notify-send "✅ Commit Creator Success [$PROJECT_NAME]" "Repository synced with GitHub (no new changes)" --urgency=normal
+            notify-send "✅ Commit Creator Succeeded" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=normal
         fi
     fi
 }

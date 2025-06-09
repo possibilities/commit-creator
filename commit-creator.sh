@@ -4,10 +4,14 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
+# Global variables for tracking state
+PROJECT_NAME=$(basename "$(pwd)")
+COMMIT_MESSAGE=""
+
 # Trap for unexpected errors
 trap 'error_code=$?; 
       if command -v notify-send &> /dev/null; then 
-          notify-send "❌ Commit Creator Error" "Script failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
+          notify-send "❌ Commit Creator Error [$PROJECT_NAME]" "Script failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
       fi; 
       echo "Error: Script failed at line $LINENO (exit code: $error_code)" >&2; 
       exit $error_code' ERR
@@ -16,7 +20,7 @@ error_exit() {
     local message="$1"
     echo "$message" >&2
     if command -v notify-send &> /dev/null; then
-        notify-send "❌ Commit Creator Error" "$message" --urgency=critical
+        notify-send "❌ Commit Creator Error [$PROJECT_NAME]" "$message" --urgency=critical
     fi
     trap - ERR  # Disable the ERR trap to prevent double notification
     exit 1
@@ -384,23 +388,23 @@ commit_creator() {
         echo "Generating commit message..." >&2
         local create_commit_prompt
         create_commit_prompt=$(get_create_commit_prompt)
-        local commit_message
-        commit_message=$(run_claude "$create_commit_prompt" "true" "true")
+        COMMIT_MESSAGE=$(run_claude "$create_commit_prompt" "true" "true")
         
-        if [[ -z "$commit_message" ]]; then
+        if [[ -z "$COMMIT_MESSAGE" ]]; then
             error_exit "No commit message was generated!"
         fi
         
         echo "Creating commit with message:" >&2
-        echo "$commit_message" >&2
+        echo "$COMMIT_MESSAGE" >&2
         
-        if git commit -m "$commit_message"; then
+        if git commit -m "$COMMIT_MESSAGE"; then
             echo "Commit created successfully!" >&2
             show_commit_summary
             echo >&2
             setup_remote_and_push
             if command -v notify-send &> /dev/null; then
-                notify-send "✅ Commit Creator Success" "Commit created and pushed successfully!" --urgency=normal
+                local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
+                notify-send "✅ Commit Creator Success [$PROJECT_NAME]" "$first_line" --urgency=normal
             fi
         else
             error_exit "Failed to create commit!"
@@ -409,7 +413,7 @@ commit_creator() {
         echo "No changes to commit. Ensuring repository is pushed to GitHub..." >&2
         setup_remote_and_push
         if command -v notify-send &> /dev/null; then
-            notify-send "✅ Commit Creator Success" "Repository synced with GitHub (no new changes)" --urgency=normal
+            notify-send "✅ Commit Creator Success [$PROJECT_NAME]" "Repository synced with GitHub (no new changes)" --urgency=normal
         fi
     fi
 }

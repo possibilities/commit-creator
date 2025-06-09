@@ -9,6 +9,7 @@
 1. Commits changes
 1. Ensures github repo (private by default)
 1. Pushed changes
+1. Shows notification
 
 ## Usage
 

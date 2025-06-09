@@ -4,6 +4,15 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
+error_exit() {
+    local message="$1"
+    echo "$message" >&2
+    if command -v notify-send &> /dev/null; then
+        notify-send "❌ Commit Creator Error" "$message" --urgency=critical
+    fi
+    exit 1
+}
+
 
 check_required_executables() {
     local missing=()
@@ -19,15 +28,13 @@ check_required_executables() {
     if [[ ${#missing[@]} -gt 0 ]]; then
         echo "Error: Required executables are missing:" >&2
         printf '%s\n' "${missing[@]}" >&2
-        echo -e "\nPlease install the missing executables before running this script." >&2
-        exit 1
+        error_exit "\nPlease install the missing executables before running this script."
     fi
 }
 
 ensure_git_repository() {
     if ! git rev-parse --git-dir &> /dev/null; then
-        echo "Error: Not in a git repository" >&2
-        exit 1
+        error_exit "Not in a git repository"
     fi
 }
 
@@ -36,8 +43,7 @@ format_code() {
         if jq -e '.scripts.format' package.json &> /dev/null; then
             echo "Formatting with pnpm..." >&2
             if ! pnpm run format >&2 2>&1; then
-                echo "Error: Code formatting failed" >&2
-                exit 1
+                error_exit "Code formatting failed"
             fi
         else
             echo "No format script found in package.json" >&2
@@ -75,8 +81,7 @@ run_tests() {
         if jq -e '.scripts.test' package.json &> /dev/null; then
             echo "Running tests with pnpm test..." >&2
             if ! pnpm run test; then
-                echo "Error: Tests failed" >&2
-                exit 1
+                error_exit "Tests failed"
             fi
         else
             echo "No test script found in package.json" >&2
@@ -85,8 +90,7 @@ run_tests() {
         if grep -q "pytest" ./pyproject.toml; then
             echo "Running tests with uv run pytest..." >&2
             if ! uv run pytest; then
-                echo "Error: Tests failed" >&2
-                exit 1
+                error_exit "Tests failed"
             fi
         else
             echo "No pytest configuration found in pyproject.toml" >&2
@@ -275,7 +279,7 @@ run_claude() {
     
     if [[ $exit_code -ne 0 ]]; then
         rm -f "$output_file"
-        exit $exit_code
+        error_exit "Claude command failed with exit code $exit_code"
     fi
     
     if [[ "$capture_file_content" == "true" ]]; then
@@ -293,13 +297,11 @@ run_claude() {
         if [[ -z "$result_json" ]]; then
             local error_json=$(echo "$last_line" | jq -r 'select(.type == "result" and .subtype != "success")')
             if [[ -n "$error_json" ]]; then
-                echo "Error: Claude returned an error result" >&2
                 rm -f "$output_file"
-                exit 1
+                error_exit "Claude returned an error result"
             else
-                echo "Error: Invalid response format from Claude" >&2
                 rm -f "$output_file"
-                exit 1
+                error_exit "Invalid response format from Claude"
             fi
         fi
     fi
@@ -368,13 +370,11 @@ commit_creator() {
             echo "Security issues found:" >&2
             cat "./FAILED-SECURITY-CHECK.txt" >&2
             rm -f "./FAILED-SECURITY-CHECK.txt"
-            exit 1
+            error_exit "Security check failed! Check the security issues above."
         fi
         
         if [[ ! -f "./SUCCEEDED-SECURITY-CHECK.txt" ]]; then
-            echo "Error: Security check did not complete successfully!" >&2
-            echo "Missing ./SUCCEEDED-SECURITY-CHECK.txt file" >&2
-            exit 1
+            error_exit "Security check did not complete successfully! Missing ./SUCCEEDED-SECURITY-CHECK.txt file"
         fi
         
         rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
@@ -387,8 +387,7 @@ commit_creator() {
         commit_message=$(run_claude "$create_commit_prompt" "true" "true")
         
         if [[ -z "$commit_message" ]]; then
-            echo "Error: No commit message was generated!" >&2
-            exit 1
+            error_exit "No commit message was generated!"
         fi
         
         echo "Creating commit with message:" >&2
@@ -399,13 +398,18 @@ commit_creator() {
             show_commit_summary
             echo >&2
             setup_remote_and_push
+            if command -v notify-send &> /dev/null; then
+                notify-send "✅ Commit Creator Success" "Commit created and pushed successfully!" --urgency=normal
+            fi
         else
-            echo "Error: Failed to create commit!" >&2
-            exit 1
+            error_exit "Failed to create commit!"
         fi
     else
         echo "No changes to commit. Ensuring repository is pushed to GitHub..." >&2
         setup_remote_and_push
+        if command -v notify-send &> /dev/null; then
+            notify-send "✅ Commit Creator Success" "Repository synced with GitHub (no new changes)" --urgency=normal
+        fi
     fi
 }
 

@@ -41,14 +41,12 @@ fi
 check_dependencies() {
     local missing=()
     
-    # Check for required commands used by commit-creator.sh
     for cmd in git tree jq; do
         if ! command -v "$cmd" &> /dev/null; then
             missing+=("$cmd")
         fi
     done
     
-    # Check for Claude executable
     local claude_executable="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
     if [[ ! -x "$claude_executable" ]]; then
         missing+=("claude (expected at $claude_executable)")

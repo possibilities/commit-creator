@@ -65,8 +65,9 @@ stage_all_changes_and_verify() {
     
     if ! check_staged_changes; then
         echo "There is nothing to commit."
-        exit 1
+        return 1
     fi
+    return 0
 }
 
 run_tests() {
@@ -339,7 +340,7 @@ setup_remote_and_push() {
     else
         echo "Pushing to origin..." >&2
         local current_branch=$(git rev-parse --abbrev-ref HEAD)
-        if git push origin "$current_branch"; then
+        if git push -u origin "$current_branch"; then
             echo "Pushed successfully!" >&2
         else
             echo "Error: Failed to push to origin" >&2
@@ -353,53 +354,58 @@ commit_creator() {
     check_required_executables
     ensure_git_repository
     format_code
-    stage_all_changes_and_verify
-    run_tests
     
-    echo "Running security check..." >&2
-    local safety_check_prompt
-    safety_check_prompt=$(get_safety_check_prompt)
-    run_claude "$safety_check_prompt" "true"
+    if stage_all_changes_and_verify; then
+        run_tests
+        
+        echo "Running security check..." >&2
+        local safety_check_prompt
+        safety_check_prompt=$(get_safety_check_prompt)
+        run_claude "$safety_check_prompt" "true"
 
-    if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
-        echo "Error: Security check failed!" >&2
-        echo "Security issues found:" >&2
-        cat "./FAILED-SECURITY-CHECK.txt" >&2
-        rm -f "./FAILED-SECURITY-CHECK.txt"
-        exit 1
-    fi
-    
-    if [[ ! -f "./SUCCEEDED-SECURITY-CHECK.txt" ]]; then
-        echo "Error: Security check did not complete successfully!" >&2
-        echo "Missing ./SUCCEEDED-SECURITY-CHECK.txt file" >&2
-        exit 1
-    fi
-    
-    rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
-    echo "Security check passed." >&2
-    
-    echo "Generating commit message..." >&2
-    local create_commit_prompt
-    create_commit_prompt=$(get_create_commit_prompt)
-    local commit_message
-    commit_message=$(run_claude "$create_commit_prompt" "true" "true")
-    
-    if [[ -z "$commit_message" ]]; then
-        echo "Error: No commit message was generated!" >&2
-        exit 1
-    fi
-    
-    echo "Creating commit with message:" >&2
-    echo "$commit_message" >&2
-    
-    if git commit -m "$commit_message"; then
-        echo "Commit created successfully!" >&2
-        show_commit_summary
-        echo >&2
-        setup_remote_and_push
+        if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
+            echo "Error: Security check failed!" >&2
+            echo "Security issues found:" >&2
+            cat "./FAILED-SECURITY-CHECK.txt" >&2
+            rm -f "./FAILED-SECURITY-CHECK.txt"
+            exit 1
+        fi
+        
+        if [[ ! -f "./SUCCEEDED-SECURITY-CHECK.txt" ]]; then
+            echo "Error: Security check did not complete successfully!" >&2
+            echo "Missing ./SUCCEEDED-SECURITY-CHECK.txt file" >&2
+            exit 1
+        fi
+        
+        rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
+        echo "Security check passed." >&2
+        
+        echo "Generating commit message..." >&2
+        local create_commit_prompt
+        create_commit_prompt=$(get_create_commit_prompt)
+        local commit_message
+        commit_message=$(run_claude "$create_commit_prompt" "true" "true")
+        
+        if [[ -z "$commit_message" ]]; then
+            echo "Error: No commit message was generated!" >&2
+            exit 1
+        fi
+        
+        echo "Creating commit with message:" >&2
+        echo "$commit_message" >&2
+        
+        if git commit -m "$commit_message"; then
+            echo "Commit created successfully!" >&2
+            show_commit_summary
+            echo >&2
+            setup_remote_and_push
+        else
+            echo "Error: Failed to create commit!" >&2
+            exit 1
+        fi
     else
-        echo "Error: Failed to create commit!" >&2
-        exit 1
+        echo "No changes to commit. Ensuring repository is pushed to GitHub..." >&2
+        setup_remote_and_push
     fi
 }
 

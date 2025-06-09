@@ -4,22 +4,6 @@ set -euo pipefail
 
 CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
-detect_package_manager() {
-    if [[ -f "package-lock.json" ]]; then
-        echo "npm"
-    elif [[ -f "yarn.lock" ]]; then
-        echo "yarn"
-    elif [[ -f "pnpm-lock.yaml" ]]; then
-        echo "pnpm"
-    elif [[ -f "bun.lockb" ]]; then
-        echo "bun"
-    elif [[ -f "package.json" ]]; then
-        echo "npm"
-    else
-        echo ""
-    fi
-}
-
 
 check_required_executables() {
     local missing=()
@@ -50,9 +34,8 @@ ensure_git_repository() {
 format_code() {
     if [[ -f "./package.json" ]]; then
         if jq -e '.scripts.format' package.json &> /dev/null; then
-            local pkg_manager=$(detect_package_manager)
-            echo "Formatting with $pkg_manager..." >&2
-            if ! $pkg_manager run format >&2 2>&1; then
+            echo "Formatting with pnpm..." >&2
+            if ! pnpm run format >&2 2>&1; then
                 echo "Error: Code formatting failed" >&2
                 exit 1
             fi
@@ -89,9 +72,8 @@ stage_all_changes_and_verify() {
 run_tests() {
     if [[ -f "./package.json" ]]; then
         if jq -e '.scripts.test' package.json &> /dev/null; then
-            local pkg_manager=$(detect_package_manager)
-            echo "Running tests with $pkg_manager test..." >&2
-            if ! $pkg_manager run test; then
+            echo "Running tests with pnpm test..." >&2
+            if ! pnpm run test; then
                 echo "Error: Tests failed" >&2
                 exit 1
             fi
@@ -332,6 +314,45 @@ show_commit_summary() {
     git --no-pager show --stat
 }
 
+setup_remote_and_push() {
+    if ! git remote get-url origin &> /dev/null; then
+        echo "No origin remote found. Creating GitHub repository..." >&2
+        
+        local repo_name=$(basename "$(pwd)")
+        
+        if ! command -v gh &> /dev/null; then
+            echo "Error: GitHub CLI (gh) is not installed. Please install it to create a remote repository." >&2
+            echo "Commit was created successfully but not pushed." >&2
+            return 1
+        fi
+        
+        if ! gh auth status &> /dev/null; then
+            echo "Error: GitHub CLI is not authenticated. Please run 'gh auth login' first." >&2
+            echo "Commit was created successfully but not pushed." >&2
+            return 1
+        fi
+        
+        echo "Creating private GitHub repository: $repo_name" >&2
+        if gh repo create "$repo_name" --private --source=. --remote=origin --push; then
+            echo "Repository created and pushed successfully!" >&2
+        else
+            echo "Error: Failed to create GitHub repository" >&2
+            echo "Commit was created successfully but not pushed." >&2
+            return 1
+        fi
+    else
+        echo "Pushing to origin..." >&2
+        local current_branch=$(git rev-parse --abbrev-ref HEAD)
+        if git push origin "$current_branch"; then
+            echo "Pushed successfully!" >&2
+        else
+            echo "Error: Failed to push to origin" >&2
+            echo "Commit was created successfully but not pushed." >&2
+            return 1
+        fi
+    fi
+}
+
 commit_creator() {
     check_required_executables
     ensure_git_repository
@@ -378,6 +399,8 @@ commit_creator() {
     if git commit -m "$commit_message"; then
         echo "Commit created successfully!" >&2
         show_commit_summary
+        echo >&2
+        setup_remote_and_push
     else
         echo "Error: Failed to create commit!" >&2
         exit 1

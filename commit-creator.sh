@@ -160,10 +160,6 @@ $status_output
 </Context>
 
 <Instructions>
-Here's your prompt with three carefully selected additions to make the list more complete, while preserving the structure and tone:
-
----
-
 All changes are in the working tree and all context to create a commit message are in the conversation.
 Follow these instructions step-by-step:
 

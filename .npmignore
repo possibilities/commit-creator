@@ -1,0 +1,4 @@
+test-*.sh
+.git
+.gitignore
+release.sh

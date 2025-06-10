@@ -23,11 +23,19 @@ fi
 echo "Pulling latest changes..."
 git pull origin main
 
-echo "Running tests..."
-npm test
+if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)" 2>/dev/null; then
+    echo "Running tests..."
+    npm test
+else
+    echo "No test script found in package.json, skipping tests..."
+fi
 
-echo "Building project..."
-npm run build
+if node -e "process.exit(require('./package.json').scripts?.build ? 0 : 1)" 2>/dev/null; then
+    echo "Building project..."
+    npm run build
+else
+    echo "No build script found in package.json, skipping build..."
+fi
 
 echo "Bumping $VERSION_TYPE version..."
 npm version $VERSION_TYPE -m "Release %s"

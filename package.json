@@ -12,10 +12,10 @@
     "url": "git+https://github.com/your-username/commit-creator.git"
   },
   "scripts": {
-    "release": "./scripts/release.sh",
-    "release:patch": "./scripts/release.sh patch",
-    "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major"
+    "release": "./release.sh",
+    "release:patch": "./release.sh patch",
+    "release:minor": "./release.sh minor",
+    "release:major": "./release.sh major"
   },
   "engines": {
     "node": ">=18.0.0"

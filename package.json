@@ -1,6 +1,6 @@
 {
   "name": "commit-creator",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "author": "Mike Bannister <notimpossiblemike@gmail.com>",
   "license": "MIT",
   "description": "An opinionated script using Claude Code to help create commits with expressive messages",

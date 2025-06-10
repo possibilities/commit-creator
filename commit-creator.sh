@@ -355,7 +355,7 @@ setup_remote_and_push() {
 }
 
 commit_creator() {
-    rm -f ./SUCCEEDED-SECURITY-CHECK.txt ./FAILED-SECURITY-CHECK.txt
+    rm -f ./SUCCEEDED-SECURITY-CHECK.txt
     
     check_required_executables
     ensure_git_repository
@@ -383,6 +383,8 @@ commit_creator() {
         
         rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
         echo "Security check passed." >&2
+        
+        rm -f "./FAILED-SECURITY-CHECK.txt"
         
         echo "Generating commit message..." >&2
         local create_commit_prompt

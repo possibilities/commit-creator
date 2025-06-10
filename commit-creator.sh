@@ -7,12 +7,10 @@ CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 PROJECT_NAME=$(basename "$(pwd)")
 COMMIT_MESSAGE=""
 
-# Cleanup function to remove succeeded security check file
 cleanup_security_files() {
     rm -f ./SUCCEEDED-SECURITY-CHECK.txt
 }
 
-# Set up traps for cleanup and error handling
 trap 'cleanup_security_files' EXIT
 trap 'error_code=$?; 
       if command -v notify-send &> /dev/null; then 
@@ -357,7 +355,6 @@ setup_remote_and_push() {
 }
 
 commit_creator() {
-    # Clean up any leftover security check files from previous runs
     rm -f ./SUCCEEDED-SECURITY-CHECK.txt ./FAILED-SECURITY-CHECK.txt
     
     check_required_executables

@@ -102,6 +102,15 @@ run_tests() {
         else
             echo "No test script found in package.json" >&2
         fi
+    elif [[ -f "./Makefile" ]]; then
+        if grep -q "^test:" ./Makefile; then
+            echo "Running tests with make test..." >&2
+            if ! make test; then
+                error_exit "Tests failed"
+            fi
+        else
+            echo "No test target found in Makefile" >&2
+        fi
     elif [[ -f "./pyproject.toml" ]]; then
         if grep -q "pytest" ./pyproject.toml; then
             echo "Running tests with uv run pytest..." >&2

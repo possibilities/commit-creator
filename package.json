@@ -1,6 +1,8 @@
 {
   "name": "commit-creator",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "author": "Mike Bannister <notimpossiblemike@gmail.com>",
+  "license": "MIT",
   "description": "An opinionated script using Claude Code to help create commits with expressive messages",
   "bin": {
     "commit-creator": "./commit-creator.sh"
@@ -9,16 +11,13 @@
     "type": "git",
     "url": "git+https://github.com/your-username/commit-creator.git"
   },
-  "keywords": [
-    "git",
-    "commit",
-    "claude",
-    "ai",
-    "automation"
-  ],
-  "author": "",
-  "license": "MIT",
+  "scripts": {
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
+  },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   }
 }

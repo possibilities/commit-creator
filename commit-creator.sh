@@ -409,7 +409,6 @@ commit_creator() {
         
         if git commit -m "$COMMIT_MESSAGE"; then
             echo "Commit created successfully!" >&2
-            show_commit_summary
             echo >&2
             setup_remote_and_push
             if command -v notify-send &> /dev/null; then

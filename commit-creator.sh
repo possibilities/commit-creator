@@ -7,6 +7,23 @@ CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 PROJECT_NAME=$(basename "$(pwd)")
 COMMIT_MESSAGE=""
 
+get_untracked_files() {
+    git ls-files --others --exclude-standard
+}
+
+cleanup_new_files() {
+    local before_files="$1"
+    local after_files=$(get_untracked_files)
+    
+    # Find files that are in after_files but not in before_files
+    while IFS= read -r file; do
+        if [[ -n "$file" ]] && ! echo "$before_files" | grep -qx "$file"; then
+            echo "Cleaning up created file: $file" >&2
+            rm -f "$file"
+        fi
+    done <<< "$after_files"
+}
+
 cleanup_security_files() {
     rm -f ./SUCCEEDED-SECURITY-CHECK.txt
 }
@@ -188,6 +205,7 @@ Follow these instructions step-by-step:
 - When complete save file with the contents of the security check 
   - If no unsafe scenarios are present, save the summary as ./SUCCEEDED-SECURITY-CHECK.txt
   - If unsafe scenarios are present, save the summary as ./FAILED-SECURITY-CHECK.txt
+- If you need to save the commit message to a text file, use the /tmp directory (e.g., /tmp/commit_message.txt)
 </Instructions>
 EOF
 }
@@ -248,6 +266,7 @@ $status_output
 
 <Instructions>
 All changes are in the working tree and all context to create a commit message are in the conversation. Analyze the changes and respond with ONLY the commit message text - no explanations, no additional commentary, just the commit message itself.
+If you need to save the commit message to a text file, use the /tmp directory (e.g., /tmp/commit_message.txt).
 </Instructions>
 EOF
 }
@@ -256,6 +275,9 @@ run_claude() {
     local context="$1"
     local validate_result="${2:-false}"
     local capture_file_content="${3:-false}"
+    
+    # Track files before running Claude
+    local before_files=$(get_untracked_files)
     
     if [[ "$capture_file_content" != "true" ]]; then
         echo '-----' >&2
@@ -284,6 +306,7 @@ run_claude() {
         --disallowedTools TodoRead \
         --disallowedTools TodoWrite \
         --disallowedTools WebSearch \
+        --add-dir /tmp \
         --model sonnet \
         | while IFS= read -r line; do
             if [[ -n "$line" ]]; then
@@ -298,6 +321,7 @@ run_claude() {
     
     if [[ $exit_code -ne 0 ]]; then
         rm -f "$output_file"
+        cleanup_new_files "$before_files"
         error_exit "Claude command failed with exit code $exit_code"
     fi
     
@@ -317,13 +341,27 @@ run_claude() {
             local error_json=$(echo "$last_line" | jq -r 'select(.type == "result" and .subtype != "success")')
             if [[ -n "$error_json" ]]; then
                 rm -f "$output_file"
+                cleanup_new_files "$before_files"
                 error_exit "Claude returned an error result"
             else
                 rm -f "$output_file"
+                cleanup_new_files "$before_files"
                 error_exit "Invalid response format from Claude"
             fi
         fi
     fi
+    
+    # Clean up any new files created during Claude execution (except security check files)
+    local after_files=$(get_untracked_files)
+    while IFS= read -r file; do
+        if [[ -n "$file" ]] && ! echo "$before_files" | grep -qx "$file"; then
+            # Don't clean up the security check files here, they're handled separately
+            if [[ "$file" != "SUCCEEDED-SECURITY-CHECK.txt" && "$file" != "FAILED-SECURITY-CHECK.txt" ]]; then
+                echo "Cleaning up created file: $file" >&2
+                rm -f "$file"
+            fi
+        fi
+    done <<< "$after_files"
     
     rm -f "$output_file"
 }

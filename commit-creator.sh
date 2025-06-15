@@ -31,7 +31,7 @@ cleanup_security_files() {
 trap 'cleanup_security_files' EXIT
 trap 'error_code=$?; 
       if command -v notify-send &> /dev/null; then 
-          notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\nScript failed at line $LINENO (exit code: $error_code)" --urgency=critical; 
+          notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\nScript failed at line $LINENO (exit code: $error_code)" --urgency=critical --expire-time=12000; 
       fi; 
       echo "Error: Script failed at line $LINENO (exit code: $error_code)" >&2; 
       exit $error_code' ERR
@@ -40,7 +40,7 @@ error_exit() {
     local message="$1"
     echo "$message" >&2
     if command -v notify-send &> /dev/null; then
-        notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\n$message" --urgency=critical
+        notify-send "❌ Error: Commit Not Created" "Project: $PROJECT_NAME\n$message" --urgency=critical --expire-time=12000
     fi
     trap - ERR
     exit 1
@@ -451,7 +451,7 @@ commit_creator() {
             setup_remote_and_push
             if command -v notify-send &> /dev/null; then
                 local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
-                notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=critical
+                notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
             fi
             show_commit_summary
         else
@@ -461,7 +461,7 @@ commit_creator() {
         echo "No changes to commit. Ensuring repository is pushed to git repo..." >&2
         setup_remote_and_push
         if command -v notify-send &> /dev/null; then
-            notify-send "✅ Commit Created" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical
+            notify-send "✅ Commit Created" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
         fi
     fi
 }

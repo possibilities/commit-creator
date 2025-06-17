@@ -461,7 +461,7 @@ commit_creator() {
         echo "No changes to commit. Ensuring repository is pushed to git repo..." >&2
         setup_remote_and_push
         if command -v notify-send &> /dev/null; then
-            notify-send "✅ Commit Created" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
+            notify-send "📋 Repository Synced" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
         fi
     fi
 }

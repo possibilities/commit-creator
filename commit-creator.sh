@@ -15,7 +15,6 @@ cleanup_new_files() {
     local before_files="$1"
     local after_files=$(get_untracked_files)
     
-    # Find files that are in after_files but not in before_files
     while IFS= read -r file; do
         if [[ -n "$file" ]] && ! echo "$before_files" | grep -qx "$file"; then
             echo "Cleaning up created file: $file" >&2
@@ -71,7 +70,7 @@ ensure_git_repository() {
     fi
 }
 
-format_code() {
+format_and_lint_code() {
     if [[ -f "./package.json" ]]; then
         if jq -e '.scripts.format' package.json &> /dev/null; then
             echo "Formatting with pnpm..." >&2
@@ -81,14 +80,35 @@ format_code() {
         else
             echo "No format script found in package.json" >&2
         fi
+        
+        if jq -e '.scripts.lint' package.json &> /dev/null; then
+            echo "Linting with pnpm..." >&2
+            if ! pnpm run lint >&2 2>&1; then
+                error_exit "Code linting failed"
+            fi
+        else
+            echo "No lint script found in package.json" >&2
+        fi
     elif [[ -f "./Makefile" ]]; then
-        echo "Formatting with make..." >&2
-        if ! make format >&2 2>&1; then
-            echo "Error: Code formatting failed" >&2
-            exit 1
+        if grep -q "^format:" ./Makefile; then
+            echo "Formatting with make..." >&2
+            if ! make format >&2 2>&1; then
+                error_exit "Code formatting failed"
+            fi
+        else
+            echo "No format target found in Makefile" >&2
+        fi
+        
+        if grep -q "^lint:" ./Makefile; then
+            echo "Linting with make..." >&2
+            if ! make lint >&2 2>&1; then
+                error_exit "Code linting failed"
+            fi
+        else
+            echo "No lint target found in Makefile" >&2
         fi
     else
-        echo "No formatting configuration found (package.json or Makefile)" >&2
+        echo "No formatting/linting configuration found (package.json or Makefile)" >&2
     fi
 }
 
@@ -276,7 +296,6 @@ run_claude() {
     local validate_result="${2:-false}"
     local capture_file_content="${3:-false}"
     
-    # Track files before running Claude
     local before_files=$(get_untracked_files)
     
     if [[ "$capture_file_content" != "true" ]]; then
@@ -351,11 +370,9 @@ run_claude() {
         fi
     fi
     
-    # Clean up any new files created during Claude execution (except security check files)
     local after_files=$(get_untracked_files)
     while IFS= read -r file; do
         if [[ -n "$file" ]] && ! echo "$before_files" | grep -qx "$file"; then
-            # Don't clean up the security check files here, they're handled separately
             if [[ "$file" != "SUCCEEDED-SECURITY-CHECK.txt" && "$file" != "FAILED-SECURITY-CHECK.txt" ]]; then
                 echo "Cleaning up created file: $file" >&2
                 rm -f "$file"
@@ -406,7 +423,7 @@ commit_creator() {
     
     check_required_executables
     ensure_git_repository
-    format_code
+    format_and_lint_code
     
     if stage_all_changes_and_verify; then
         run_tests

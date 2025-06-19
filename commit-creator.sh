@@ -89,6 +89,15 @@ format_and_lint_code() {
         else
             echo "No lint script found in package.json" >&2
         fi
+        
+        if jq -e '.scripts.types' package.json &> /dev/null; then
+            echo "Type checking with pnpm..." >&2
+            if ! pnpm run types >&2 2>&1; then
+                error_exit "Type checking failed"
+            fi
+        else
+            echo "No types script found in package.json" >&2
+        fi
     elif [[ -f "./Makefile" ]]; then
         if grep -q "^format:" ./Makefile; then
             echo "Formatting with make..." >&2

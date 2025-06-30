@@ -334,6 +334,18 @@ run_claude() {
         --disallowedTools TodoRead \
         --disallowedTools TodoWrite \
         --disallowedTools WebSearch \
+        --disallowedTools mcp__kit__open_repository \
+        --disallowedTools mcp__kit__search_code \
+        --disallowedTools mcp__kit__grep_code \
+        --disallowedTools mcp__kit__get_file_content \
+        --disallowedTools mcp__kit__get_multiple_file_contents \
+        --disallowedTools mcp__kit__extract_symbols \
+        --disallowedTools mcp__kit__find_symbol_usages \
+        --disallowedTools mcp__kit__get_file_tree \
+        --disallowedTools mcp__kit__get_code_summary \
+        --disallowedTools mcp__kit__get_git_info \
+        --disallowedTools mcp__context7__resolve-library-id \
+        --disallowedTools mcp__context7__get-library-docs \
         --add-dir /tmp \
         --model sonnet \
         | while IFS= read -r line; do

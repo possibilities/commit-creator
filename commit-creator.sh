@@ -92,13 +92,12 @@ ensure_git_repository() {
     fi
 }
 
-ensure_package_json() {
-    if [[ ! -f "./package.json" ]]; then
-        error_exit "Not a Node.js project - package.json not found"
-    fi
-}
-
 format_and_lint_code() {
+    if [[ ! -f "./package.json" ]]; then
+        echo "No package.json found - skipping code quality checks" >&2
+        return
+    fi
+    
     if jq -e '.scripts.format' package.json &> /dev/null; then
         echo "Formatting with pnpm..." >&2
         if ! pnpm run format >&2 2>&1; then
@@ -145,6 +144,11 @@ stage_all_changes_and_verify() {
 }
 
 run_tests() {
+    if [[ ! -f "./package.json" ]]; then
+        echo "No package.json found - skipping tests" >&2
+        return
+    fi
+    
     if jq -e '.scripts.test' package.json &> /dev/null; then
         echo "Running tests with pnpm test..." >&2
         if ! pnpm run test; then
@@ -416,7 +420,6 @@ commit_creator() {
     
     check_required_executables
     ensure_git_repository
-    ensure_package_json
     format_and_lint_code
     
     if stage_all_changes_and_verify; then

@@ -461,6 +461,11 @@ commit_creator() {
             error_exit "No commit message was generated!"
         fi
         
+        # Check if commit message contains the word "commit" (case-insensitive)
+        if echo "$COMMIT_MESSAGE" | grep -qi "commit"; then
+            error_exit "Commit message cannot contain the word 'commit'. Generated message: $COMMIT_MESSAGE"
+        fi
+        
         echo "Creating commit with message:" >&2
         echo "$COMMIT_MESSAGE" >&2
         

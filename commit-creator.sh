@@ -92,54 +92,38 @@ ensure_git_repository() {
     fi
 }
 
+ensure_package_json() {
+    if [[ ! -f "./package.json" ]]; then
+        error_exit "Not a Node.js project - package.json not found"
+    fi
+}
+
 format_and_lint_code() {
-    if [[ -f "./package.json" ]]; then
-        if jq -e '.scripts.format' package.json &> /dev/null; then
-            echo "Formatting with pnpm..." >&2
-            if ! pnpm run format >&2 2>&1; then
-                error_exit "Code formatting failed"
-            fi
-        else
-            echo "No format script found in package.json" >&2
-        fi
-        
-        if jq -e '.scripts.lint' package.json &> /dev/null; then
-            echo "Linting with pnpm..." >&2
-            if ! pnpm run lint >&2 2>&1; then
-                error_exit "Code linting failed"
-            fi
-        else
-            echo "No lint script found in package.json" >&2
-        fi
-        
-        if jq -e '.scripts.types' package.json &> /dev/null; then
-            echo "Type checking with pnpm..." >&2
-            if ! pnpm run types >&2 2>&1; then
-                error_exit "Type checking failed"
-            fi
-        else
-            echo "No types script found in package.json" >&2
-        fi
-    elif [[ -f "./Makefile" ]]; then
-        if grep -q "^format:" ./Makefile; then
-            echo "Formatting with make..." >&2
-            if ! make format >&2 2>&1; then
-                error_exit "Code formatting failed"
-            fi
-        else
-            echo "No format target found in Makefile" >&2
-        fi
-        
-        if grep -q "^lint:" ./Makefile; then
-            echo "Linting with make..." >&2
-            if ! make lint >&2 2>&1; then
-                error_exit "Code linting failed"
-            fi
-        else
-            echo "No lint target found in Makefile" >&2
+    if jq -e '.scripts.format' package.json &> /dev/null; then
+        echo "Formatting with pnpm..." >&2
+        if ! pnpm run format >&2 2>&1; then
+            error_exit "Code formatting failed"
         fi
     else
-        echo "No formatting/linting configuration found (package.json or Makefile)" >&2
+        echo "No format script found in package.json" >&2
+    fi
+    
+    if jq -e '.scripts.lint' package.json &> /dev/null; then
+        echo "Linting with pnpm..." >&2
+        if ! pnpm run lint >&2 2>&1; then
+            error_exit "Code linting failed"
+        fi
+    else
+        echo "No lint script found in package.json" >&2
+    fi
+    
+    if jq -e '.scripts.typecheck' package.json &> /dev/null; then
+        echo "Type checking with pnpm..." >&2
+        if ! pnpm run typecheck >&2 2>&1; then
+            error_exit "Type checking failed"
+        fi
+    else
+        echo "No typecheck script found in package.json" >&2
     fi
 }
 
@@ -161,35 +145,13 @@ stage_all_changes_and_verify() {
 }
 
 run_tests() {
-    if [[ -f "./package.json" ]]; then
-        if jq -e '.scripts.test' package.json &> /dev/null; then
-            echo "Running tests with pnpm test..." >&2
-            if ! pnpm run test; then
-                error_exit "Tests failed"
-            fi
-        else
-            echo "No test script found in package.json" >&2
-        fi
-    elif [[ -f "./Makefile" ]]; then
-        if grep -q "^test:" ./Makefile; then
-            echo "Running tests with make test..." >&2
-            if ! make test; then
-                error_exit "Tests failed"
-            fi
-        else
-            echo "No test target found in Makefile" >&2
-        fi
-    elif [[ -f "./pyproject.toml" ]]; then
-        if grep -q "pytest" ./pyproject.toml; then
-            echo "Running tests with uv run pytest..." >&2
-            if ! uv run pytest; then
-                error_exit "Tests failed"
-            fi
-        else
-            echo "No pytest configuration found in pyproject.toml" >&2
+    if jq -e '.scripts.test' package.json &> /dev/null; then
+        echo "Running tests with pnpm test..." >&2
+        if ! pnpm run test; then
+            error_exit "Tests failed"
         fi
     else
-        echo "No test configuration found" >&2
+        echo "No test script found in package.json" >&2
     fi
 }
 
@@ -454,6 +416,7 @@ commit_creator() {
     
     check_required_executables
     ensure_git_repository
+    ensure_package_json
     format_and_lint_code
     
     if stage_all_changes_and_verify; then

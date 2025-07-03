@@ -6,6 +6,28 @@ CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 
 PROJECT_NAME=$(basename "$(pwd)")
 COMMIT_MESSAGE=""
+SHOULD_PUSH=true
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-push)
+            SHOULD_PUSH=false
+            shift
+            ;;
+        --push)
+            SHOULD_PUSH=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            echo "Usage: $0 [--push | --no-push]" >&2
+            echo "  --push     Push to remote after commit (default)" >&2
+            echo "  --no-push  Create commit without pushing to remote" >&2
+            exit 1
+            ;;
+    esac
+done
 
 get_untracked_files() {
     git ls-files --others --exclude-standard
@@ -474,10 +496,18 @@ commit_creator() {
         if git commit -m "$COMMIT_MESSAGE"; then
             echo "Commit created successfully!" >&2
             echo >&2
-            setup_remote_and_push
+            if [[ "$SHOULD_PUSH" == "true" ]]; then
+                setup_remote_and_push
+            else
+                echo "Skipping push to remote (--no-push flag set)" >&2
+            fi
             if command -v notify-send &> /dev/null; then
                 local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
-                notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
+                if [[ "$SHOULD_PUSH" == "false" ]]; then
+                    notify-send "✅ Commit Created (Not Pushed)" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
+                else
+                    notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
+                fi
             fi
             show_commit_summary
         else
@@ -485,9 +515,13 @@ commit_creator() {
         fi
     else
         echo "No changes to commit. Ensuring repository is pushed to git repo..." >&2
-        setup_remote_and_push
-        if command -v notify-send &> /dev/null; then
-            notify-send "📋 Repository Synced" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
+        if [[ "$SHOULD_PUSH" == "true" ]]; then
+            setup_remote_and_push
+            if command -v notify-send &> /dev/null; then
+                notify-send "📋 Repository Synced" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
+            fi
+        else
+            echo "No changes to commit (--no-push flag set, skipping sync)" >&2
         fi
     fi
 }

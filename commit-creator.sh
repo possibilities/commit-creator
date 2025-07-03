@@ -92,6 +92,11 @@ ensure_git_repository() {
     fi
 }
 
+is_in_worktree() {
+    # In a worktree, .git is a file, not a directory
+    [[ -f .git ]] && grep -q "^gitdir:" .git
+}
+
 format_and_lint_code() {
     if [[ ! -f "./package.json" ]]; then
         echo "No package.json found - skipping code quality checks" >&2
@@ -463,7 +468,11 @@ commit_creator() {
             echo "Commit created successfully!" >&2
             echo >&2
             if [[ "$SHOULD_PUSH" == "true" ]]; then
-                setup_remote_and_push
+                if is_in_worktree; then
+                    echo "Skipping push - detected git worktree" >&2
+                else
+                    setup_remote_and_push
+                fi
             else
                 echo "Skipping push to remote (--no-push flag set)" >&2
             fi
@@ -471,6 +480,8 @@ commit_creator() {
                 local first_line=$(echo "$COMMIT_MESSAGE" | head -n1)
                 if [[ "$SHOULD_PUSH" == "false" ]]; then
                     notify-send "✅ Commit Created (Not Pushed)" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
+                elif is_in_worktree; then
+                    notify-send "✅ Commit Created (Worktree)" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
                 else
                     notify-send "✅ Commit Created" "Project: $PROJECT_NAME\n$first_line" --urgency=critical --expire-time=12000
                 fi
@@ -482,9 +493,13 @@ commit_creator() {
     else
         echo "No changes to commit. Ensuring repository is pushed to git repo..." >&2
         if [[ "$SHOULD_PUSH" == "true" ]]; then
-            setup_remote_and_push
-            if command -v notify-send &> /dev/null; then
-                notify-send "📋 Repository Synced" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
+            if is_in_worktree; then
+                echo "Skipping sync - detected git worktree" >&2
+            else
+                setup_remote_and_push
+                if command -v notify-send &> /dev/null; then
+                    notify-send "📋 Repository Synced" "Project: $PROJECT_NAME\nRepository synced with git repo (no new changes)" --urgency=critical --expire-time=12000
+                fi
             fi
         else
             echo "No changes to commit (--no-push flag set, skipping sync)" >&2

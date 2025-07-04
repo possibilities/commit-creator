@@ -5,8 +5,7 @@
   "license": "MIT",
   "description": "An opinionated script using Claude Code to help create commits with expressive messages",
   "bin": {
-    "commit-creator": "./commit-creator.sh",
-    "commit": "./commit-creator.sh"
+    "commit-creator": "./commit-creator.sh"
   },
   "repository": {
     "type": "git",

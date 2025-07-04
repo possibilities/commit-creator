@@ -7,6 +7,7 @@ CLAUDE_EXECUTABLE="${CLAUDE_EXECUTABLE:-$HOME/.claude/local/claude}"
 PROJECT_NAME=$(basename "$(pwd)")
 COMMIT_MESSAGE=""
 SHOULD_PUSH=true
+SKIP_SECURITY_CHECK=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -19,11 +20,16 @@ while [[ $# -gt 0 ]]; do
             SHOULD_PUSH=true
             shift
             ;;
+        --dangerously-skip-security-check)
+            SKIP_SECURITY_CHECK=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1" >&2
-            echo "Usage: $0 [--push | --no-push]" >&2
-            echo "  --push     Push to remote after commit (default)" >&2
-            echo "  --no-push  Create commit without pushing to remote" >&2
+            echo "Usage: $0 [--push | --no-push] [--dangerously-skip-security-check]" >&2
+            echo "  --push                             Push to remote after commit (default)" >&2
+            echo "  --no-push                          Create commit without pushing to remote" >&2
+            echo "  --dangerously-skip-security-check  Skip security check (use with caution!)" >&2
             exit 1
             ;;
     esac
@@ -430,27 +436,32 @@ commit_creator() {
     if stage_all_changes_and_verify; then
         run_tests
         
-        echo "Running security check..." >&2
-        local safety_check_prompt
-        safety_check_prompt=$(get_safety_check_prompt)
-        run_claude "$safety_check_prompt" "true"
+        if [[ "$SKIP_SECURITY_CHECK" == "true" ]]; then
+            echo "⚠️  WARNING: Security check is being skipped! (--dangerously-skip-security-check flag is set)" >&2
+            echo "⚠️  This is potentially dangerous - ensure you've reviewed all changes manually!" >&2
+        else
+            echo "Running security check..." >&2
+            local safety_check_prompt
+            safety_check_prompt=$(get_safety_check_prompt)
+            run_claude "$safety_check_prompt" "true"
 
-        if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
-            echo "Error: Security check failed!" >&2
-            echo "Security issues found:" >&2
-            cat "./FAILED-SECURITY-CHECK.txt" >&2
+            if [[ -f "./FAILED-SECURITY-CHECK.txt" ]]; then
+                echo "Error: Security check failed!" >&2
+                echo "Security issues found:" >&2
+                cat "./FAILED-SECURITY-CHECK.txt" >&2
+                rm -f "./FAILED-SECURITY-CHECK.txt"
+                error_exit "Security check failed! Check the security issues above."
+            fi
+            
+            if [[ ! -f "./SUCCEEDED-SECURITY-CHECK.txt" ]]; then
+                error_exit "Security check did not complete successfully! Missing ./SUCCEEDED-SECURITY-CHECK.txt file"
+            fi
+            
+            rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
+            echo "Security check passed." >&2
+            
             rm -f "./FAILED-SECURITY-CHECK.txt"
-            error_exit "Security check failed! Check the security issues above."
         fi
-        
-        if [[ ! -f "./SUCCEEDED-SECURITY-CHECK.txt" ]]; then
-            error_exit "Security check did not complete successfully! Missing ./SUCCEEDED-SECURITY-CHECK.txt file"
-        fi
-        
-        rm -f "./SUCCEEDED-SECURITY-CHECK.txt"
-        echo "Security check passed." >&2
-        
-        rm -f "./FAILED-SECURITY-CHECK.txt"
         
         echo "Generating commit message..." >&2
         local create_commit_prompt

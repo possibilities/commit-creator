@@ -3,7 +3,7 @@
   "version": "0.1.6",
   "author": "Mike Bannister <notimpossiblemike@gmail.com>",
   "license": "MIT",
-  "description": "An opinionated script using Claude Code to help create commits with expressive messages",
+  "description": "Commit Creator CLI",
   "bin": {
     "commit-creator": "./commit-creator.sh"
   },

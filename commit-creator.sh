@@ -413,7 +413,33 @@ setup_remote_and_push() {
         if gh repo create "$repo_name" --private --source=. --remote=origin --push; then
             echo "Repository created and pushed successfully!" >&2
         else
-            error_exit "Failed to create git repository.\nCommit was created successfully but not pushed."
+            echo "Repository creation failed. Attempting to use existing repository..." >&2
+            
+            local github_user=$(gh api user --jq .login 2>/dev/null)
+            if [[ -z "$github_user" ]]; then
+                error_exit "Failed to determine GitHub username.\nCommit was created successfully but not pushed."
+            fi
+            
+            local remote_url="https://github.com/${github_user}/${repo_name}.git"
+            echo "Setting up remote for existing repository: $remote_url" >&2
+            
+            if git remote add origin "$remote_url" 2>/dev/null; then
+                echo "Remote added successfully" >&2
+            else
+                echo "Remote might already exist, continuing..." >&2
+            fi
+            
+            local current_branch=$(git rev-parse --abbrev-ref HEAD)
+            echo "Attempting to push to existing repository..." >&2
+            if git push -u origin "$current_branch" 2>&1; then
+                echo "Pushed successfully to existing repository!" >&2
+            else
+                if git push -u origin "$current_branch" --force 2>&1; then
+                    echo "Force pushed successfully to existing repository!" >&2
+                else
+                    error_exit "Failed to push to repository. The repository might not exist or you might not have access.\nCommit was created successfully but not pushed."
+                fi
+            fi
         fi
     else
         echo "Pushing to origin..." >&2
@@ -472,8 +498,13 @@ commit_creator() {
             error_exit "No commit message was generated!"
         fi
         
-        # Check if commit message contains the word "commit" (case-insensitive)
-        if echo "$COMMIT_MESSAGE" | grep -qi "commit"; then
+        CLEANED_MESSAGE="$COMMIT_MESSAGE"
+        if [[ "$COMMIT_MESSAGE" =~ ^"Initial commit: " ]]; then
+            CLEANED_MESSAGE="${COMMIT_MESSAGE#Initial commit: }"
+            COMMIT_MESSAGE="$CLEANED_MESSAGE"
+        fi
+        
+        if echo "$CLEANED_MESSAGE" | grep -qi "commit"; then
             error_exit "Commit message cannot contain the word 'commit'. Generated message: $COMMIT_MESSAGE"
         fi
         

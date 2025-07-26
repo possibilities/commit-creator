@@ -1,5 +1,7 @@
 # Commit Creator
 
+[![npm version](https://badge.fury.io/js/commit-creator.svg)](https://www.npmjs.com/package/commit-creator)
+
 > An opinionated script using Claude Code to help create commits with expressive messages.
 
 ## Recipe
